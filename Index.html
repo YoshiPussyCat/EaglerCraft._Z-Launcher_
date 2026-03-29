@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EaglercraftZ Launcher</title>
+<style>
+@font-face {
+  font-family: 'Minecraft';
+  src: url('./Fonts/Minecraft.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+:root {
+  --font: 'Minecraft', monospace;
+
+  /* dark theme */
+  --bg-base:          #0d0d0d;
+  --sidebar:          #1c1c1c;
+  --sidebar-border:   #2c2c2c;
+  --sidebar-text:     #c8c8c8;
+  --sidebar-hover:    #252525;
+  --sidebar-active:   #1e2d1e;
+  --topbar:           #141414;
+  --topbar-border:    #282828;
+  --topbar-text:      #ffffff;
+  --card-bg:          rgba(0,0,0,0.68);
+  --card-border:      rgba(255,255,255,0.09);
+  --text:             #ffffff;
+  --text-muted:       #888888;
+  --input-bg:         #111111;
+  --input-border:     #333333;
+  --green:            #5aad5a;
+  --green-hover:      #6abf6a;
+  --green-dark:       #2e7d32;
+  --green-glow:       rgba(90,173,90,0.25);
+  --btn-bg:           rgba(255,255,255,0.06);
+  --btn-border:       rgba(255,255,255,0.12);
+  --btn-hover:        rgba(255,255,255,0.12);
+  --scrollbar:        #2a2a2a;
+  --overlay-dim:      rgba(0,0,0,0.45);
+  --settings-bg:      #0a0a0a;
+}
+
+.light-mode {
+  --bg-base:          #c6c6c6;
+  --sidebar:          #b8b8b8;
+  --sidebar-border:   #999999;
+  --sidebar-text:     #222222;
+  --sidebar-hover:    #aaaaaa;
+  --sidebar-active:   #c8ddc8;
+  --topbar:           #a8a8a8;
+  --topbar-border:    #888888;
+  --topbar-text:      #111111;
+  --card-bg:          rgba(200,200,200,0.82);
+  --card-border:      rgba(0,0,0,0.18);
+  --text:             #111111;
+  --text-muted:       #444444;
+  --input-bg:         #d8d8d8;
+  --input-border:     #888888;
+  --btn-bg:           rgba(0,0,0,0.08);
+  --btn-border:       rgba(0,0,0,0.20);
+  --btn-hover:        rgba(0,0,0,0.14);
+  --scrollbar:        #999999;
+  --overlay-dim:      rgba(255,255,255,0.3);
+  --settings-bg:      #d0d0d0;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: #000;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg-base);
+  transform-origin: top left;
+  /* zoom handled by JS via transform scale */
+}
+
+/* pixel border mixin used throughout */
+.pixel-border {
+  box-shadow:
+    inset -2px -4px 0 rgba(0,0,0,0.35),
+    inset 2px 2px 0 rgba(255,255,255,0.12);
+}
+
+/* =====================
+   LOADING SCREEN
+   ===================== */
+#loading-screen {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: #000;
+  transition: opacity 1.2s ease;
+  overflow: hidden;
+}
+#loading-screen.fade-out { opacity:0; pointer-events:none; }
+
+#load-bg {
+  position: absolute; inset: 0;
+  background: url('./images/eaglercraft-game.png') center/cover no-repeat;
+  image-rendering: pixelated;
+  filter: brightness(0.28);
+}
+
+.load-content {
+  position: relative; z-index: 2;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 28px;
+}
+#load-logo {
+  max-width: 480px; width: 80%;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0 28px rgba(90,173,90,0.45));
+  animation: logoPulse 2.2s ease-in-out infinite;
+}
+@keyframes logoPulse {
+  0%,100% { transform:scale(1);   filter:drop-shadow(0 0 16px rgba(90,173,90,0.3)); }
+  50%      { transform:scale(1.013); filter:drop-shadow(0 0 36px rgba(90,173,90,0.7)); }
+}
+
+.load-bar-wrap { width:480px; max-width:82vw; display:flex; flex-direction:column; gap:7px; }
+
+.load-bar-outer {
+  width:100%; height:22px;
+  background: #0c0c0c;
+  border: 3px solid #3c3c3c;
+  box-shadow: inset 0 2px 10px #000;
+  position: relative; overflow: hidden;
+}
+.load-bar-fill {
+  height:100%; width:0%;
+  background: linear-gradient(90deg,#1b5e20,#388e3c,#66bb6a,#a5d6a7,#66bb6a,#388e3c);
+  background-size:300% 100%;
+  animation: barAnim 2s linear infinite;
+  transition: width 0.12s linear;
+}
+@keyframes barAnim { 0%{background-position:0%} 100%{background-position:100%} }
+.load-bar-fill.shine { animation: barAnim 0.3s linear infinite, barShine 0.7s ease forwards; }
+@keyframes barShine {
+  0%  { filter:brightness(1); }
+  45% { filter:brightness(2.6) saturate(1.5); box-shadow:0 0 40px #a5d6a7; }
+  100%{ filter:brightness(1.5); }
+}
+.load-bar-pct {
+  position:absolute; right:7px; top:50%; transform:translateY(-50%);
+  color:#fff; font-family:var(--font); font-size:10px;
+  text-shadow:1px 1px 2px #000; z-index:2;
+}
+.load-bar-status { color:#777; font-family:var(--font); font-size:9px; text-align:right; }
+
+/* =====================
+   LAUNCHER SHELL
+   ===================== */
+#launcher {
+  display: none;
+  width: 100%; height: 100%;
+  flex-direction: row;
+}
+#launcher.visible { display: flex; }
+
+/* BG */
+#bg {
+  position: absolute; inset:0;
+  background-size: cover; background-position: center;
+  image-rendering: pixelated;
+  transition: background-image 0.5s ease;
+  pointer-events: none; z-index:0;
+}
+#bg-dim {
+  position: absolute; inset:0;
+  background: var(--overlay-dim);
+  pointer-events: none; z-index:1;
+  transition: background 0.3s;
+}
+
+/* =====================
+   SIDEBAR
+   ===================== */
+#sidebar {
+  width: 198px; min-width:198px; height:100%;
+  background: var(--sidebar);
+  border-right: 2px solid var(--sidebar-border);
+  display: flex; flex-direction: column;
+  position: relative; z-index:10;
+  transition: width 0.26s cubic-bezier(.4,0,.2,1),
+              min-width 0.26s cubic-bezier(.4,0,.2,1),
+              opacity 0.22s;
+  overflow: hidden;
+}
+#sidebar.collapsed { width:0; min-width:0; opacity:0; pointer-events:none; }
+
+.sb-section {
+  font-size: 9px; color: var(--text-muted);
+  padding: 10px 13px 4px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 10px 13px;
+  cursor: pointer;
+  color: var(--sidebar-text); font-size: 11px;
+  transition: background 0.13s, color 0.13s;
+  white-space: nowrap;
+  border-left: 3px solid transparent;
+}
+.nav-item:hover { background: var(--sidebar-hover); color: var(--text); }
+.nav-item.active {
+  background: var(--sidebar-active);
+  color: var(--green);
+  border-left-color: var(--green);
+}
+.nav-item img {
+  width:18px; height:18px;
+  object-fit:contain; image-rendering:pixelated; flex-shrink:0;
+}
+.light-mode .nav-item:not(.active) img { filter: brightness(0.15) saturate(0); }
+
+.sb-divider { height:1px; background:var(--sidebar-border); margin:5px 10px; }
+.sb-spacer  { flex:1; }
+.sb-version {
+  padding:9px 13px; font-size:9px;
+  color:var(--text-muted); white-space:nowrap;
+  border-top:1px solid var(--sidebar-border);
+}
+
+/* =====================
+   TOPBAR
+   ===================== */
+#topbar {
+  height: 44px; background: var(--topbar);
+  border-bottom: 2px solid var(--topbar-border);
+  display: flex; align-items: center;
+  padding: 0 12px; gap: 9px;
+  position: relative; z-index:10; flex-shrink:0;
+}
+#menu-toggle {
+  background:none; border:none; cursor:pointer;
+  display:flex; flex-direction:column; gap:4px; padding:5px;
+}
+#menu-toggle span {
+  display:block; width:17px; height:2px;
+  background:var(--topbar-text); transition:background 0.2s;
+}
+#menu-toggle:hover span { background:var(--green); }
+
+#topbar-name {
+  color:var(--topbar-text); font-size:13px; flex:1;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.tb-btn {
+  display:flex; align-items:center; gap:5px;
+  color:var(--topbar-text); font-size:10px;
+  cursor:pointer; padding:5px 9px;
+  border:1px solid var(--btn-border);
+  background:var(--btn-bg);
+  transition:background 0.14s,border-color 0.14s,color 0.14s;
+  text-decoration:none; font-family:var(--font);
+  white-space:nowrap;
+}
+.tb-btn:hover { background:var(--btn-hover); border-color:var(--green); color:var(--green); }
+.tb-btn img { height:19px; object-fit:contain; image-rendering:pixelated; }
+.tb-btn.icon-only { padding:4px 7px; }
+
+/* music pill in topbar */
+#music-pill {
+  display:flex; align-items:center; gap:6px;
+  background:var(--btn-bg); border:1px solid var(--btn-border);
+  padding:4px 9px; font-size:9px; color:var(--topbar-text);
+  max-width:200px; overflow:hidden;
+}
+#music-pill .note { color:var(--green); font-size:11px; animation:noteSpin 2s linear infinite; }
+@keyframes noteSpin { 0%{opacity:1} 50%{opacity:0.4} 100%{opacity:1} }
+#music-title-scroll {
+  flex:1; white-space:nowrap; overflow:hidden;
+  text-overflow:ellipsis; font-size:8px; color:var(--text-muted);
+}
+
+/* =====================
+   MAIN AREA
+   ===================== */
+#main-area {
+  flex:1; display:flex; flex-direction:column;
+  position:relative; z-index:5; min-width:0; overflow:hidden;
+}
+
+/* =====================
+   GAME SCREEN
+   ===================== */
+#game-screen {
+  flex:1; display:flex; flex-direction:column;
+  align-items:center; padding:22px 24px 16px; gap:16px;
+}
+#game-screen.hidden { display:none; }
+
+#logo-img {
+  max-width:500px; width:72%;
+  image-rendering:pixelated;
+  filter:drop-shadow(0 6px 24px rgba(0,0,0,0.75));
+  animation:logoFloat 3.5s ease-in-out infinite;
+  flex-shrink:0;
+}
+@keyframes logoFloat {
+  0%,100%{ transform:translateY(0); }
+  50%    { transform:translateY(-7px); }
+}
+
+#version-block {
+  display:flex; flex-direction:column;
+  align-items:center; gap:7px;
+  width:100%; max-width:460px; flex-shrink:0;
+}
+.ver-lbl { color:var(--text-muted); font-size:9px; letter-spacing:1px; }
+
+.dd-wrap { position:relative; width:100%; }
+.dd-btn {
+  width:100%; background:var(--card-bg);
+  border:2px solid var(--card-border);
+  color:var(--text); font-family:var(--font); font-size:11px;
+  padding:10px 12px; cursor:pointer;
+  display:flex; align-items:center; gap:9px;
+  transition:border-color 0.14s; text-align:left;
+  backdrop-filter:blur(10px);
+}
+.dd-btn:hover { border-color:var(--green); }
+.dd-btn img { width:22px; height:22px; object-fit:contain; image-rendering:pixelated; flex-shrink:0; }
+.dd-btn .chv { margin-left:auto; font-size:10px; transition:transform 0.16s; flex-shrink:0; }
+.dd-btn.open .chv { transform:rotate(180deg); }
+
+.dd-list {
+  display:none; position:absolute; top:100%; left:0; right:0;
+  background:rgba(10,10,10,0.97); border:2px solid var(--card-border);
+  border-top:none; z-index:200; max-height:220px; overflow-y:auto;
+  backdrop-filter:blur(14px);
+}
+.light-mode .dd-list { background:rgba(180,180,180,0.97); }
+.dd-list.open { display:block; }
+.dd-opt {
+  display:flex; align-items:center; gap:9px;
+  padding:9px 12px; cursor:pointer;
+  font-family:var(--font); font-size:10px;
+  color:var(--text-muted); border-bottom:1px solid var(--card-border);
+  transition:background 0.12s,color 0.12s;
+}
+.dd-opt:hover { background:var(--sidebar-hover); color:var(--text); }
+.dd-opt.selected { color:var(--green); }
+.dd-opt img { width:20px; height:20px; object-fit:contain; image-rendering:pixelated; flex-shrink:0; }
+
+/* PLAY BUTTON */
+#play-btn {
+  cursor:pointer; max-width:210px; width:55%;
+  image-rendering:pixelated;
+  filter:drop-shadow(0 4px 16px rgba(0,0,0,0.65));
+  transition:transform 0.1s,filter 0.16s; flex-shrink:0;
+}
+#play-btn:hover { transform:scale(1.06); filter:drop-shadow(0 6px 24px rgba(90,173,90,0.5)); }
+#play-btn:active { transform:scale(0.95); }
+
+#game-footer {
+  margin-top:auto; color:rgba(255,255,255,0.3);
+  font-size:8px; text-align:center; letter-spacing:0.5px;
+}
+.light-mode #game-footer { color:rgba(0,0,0,0.28); }
+
+/* =====================
+   SECTION SCREENS
+   ===================== */
+.sec-screen {
+  display:none; flex-direction:column;
+  flex:1; overflow-y:auto;
+  padding:24px 28px; gap:18px; position:relative;
+}
+.sec-screen.visible { display:flex; }
+
+.sec-title {
+  color:var(--text); font-size:16px;
+  border-bottom:2px solid var(--card-border);
+  padding-bottom:10px;
+  text-shadow:0 0 18px var(--green-glow); flex-shrink:0;
+}
+
+/* =====================
+   CREDITS
+   ===================== */
+.credit-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+  gap:12px;
+}
+.credit-card {
+  background:var(--card-bg); border:2px solid var(--card-border);
+  backdrop-filter:blur(10px); padding:14px 16px;
+  display:flex; flex-direction:column; gap:7px;
+  transition:border-color 0.2s,transform 0.2s;
+}
+.credit-card:hover { border-color:var(--green); transform:translateY(-2px); }
+.credit-name  { color:var(--text); font-size:12px; }
+.credit-quote { color:var(--green); font-size:9px; font-style:italic; }
+.credit-desc  { color:var(--text-muted); font-size:9px; line-height:1.8; }
+
+/* =====================
+   SETTINGS
+   ===================== */
+.settings-body { display:flex; flex-direction:column; gap:22px; max-width:660px; }
+
+/* category tab strip */
+.cat-tabs {
+  display:flex; gap:0; flex-wrap:nowrap;
+  border-bottom:2px solid var(--card-border);
+  flex-shrink:0;
+}
+.cat-tab {
+  padding:9px 14px; font-family:var(--font); font-size:10px;
+  color:var(--text-muted); cursor:pointer; background:transparent;
+  border:none; border-bottom:2px solid transparent;
+  margin-bottom:-2px; transition:color 0.15s,border-color 0.15s;
+  white-space:nowrap;
+}
+.cat-tab:hover { color:var(--text); }
+.cat-tab.active { color:var(--green); border-bottom-color:var(--green); }
+
+.cat-panel { display:none; flex-direction:column; gap:12px; }
+.cat-panel.visible { display:flex; }
+
+.s-card {
+  background:var(--card-bg); border:2px solid var(--card-border);
+  backdrop-filter:blur(8px); padding:14px 16px;
+  display:flex; flex-direction:column; gap:9px;
+}
+.s-lbl { color:var(--text-muted); font-size:10px; letter-spacing:0.8px; }
+.s-desc { color:var(--text-muted); font-size:9px; line-height:1.8; opacity:0.7; }
+
+/* toggle group */
+.tog-grp { display:flex; gap:7px; flex-wrap:wrap; }
+.tog {
+  padding:7px 12px; font-family:var(--font); font-size:10px;
+  border:2px solid var(--input-border); background:var(--input-bg);
+  color:var(--text-muted); cursor:pointer; transition:all 0.14s;
+}
+.tog:hover { border-color:var(--green); color:var(--text); }
+.tog.on { border-color:var(--green); color:var(--green); background:rgba(90,173,90,0.1); }
+
+/* input */
+.s-input {
+  background:var(--input-bg); border:2px solid var(--input-border);
+  color:var(--text); font-family:var(--font); font-size:11px;
+  padding:8px 10px; outline:none; width:100%;
+  transition:border-color 0.14s;
+}
+.s-input:focus { border-color:var(--green); }
+
+/* range */
+.range-row { display:flex; align-items:center; gap:10px; }
+.s-range {
+  flex:1; -webkit-appearance:none; height:5px;
+  background:var(--input-border); outline:none; cursor:pointer;
+}
+.s-range::-webkit-slider-thumb {
+  -webkit-appearance:none; width:13px; height:13px;
+  background:var(--green); border-radius:0; cursor:pointer;
+  border:2px solid rgba(0,0,0,0.5);
+}
+.range-v { color:var(--green); font-size:10px; min-width:44px; text-align:right; }
+
+/* music player card */
+.music-player {
+  display:flex; flex-direction:column; gap:10px;
+}
+.music-track-row {
+  display:flex; align-items:center; gap:10px;
+}
+.music-prev, .music-next {
+  background:var(--input-bg); border:2px solid var(--input-border);
+  color:var(--text); font-family:var(--font); font-size:14px;
+  padding:7px 14px; cursor:pointer; transition:border-color 0.14s,color 0.14s;
+  flex-shrink:0;
+}
+.music-prev:hover, .music-next:hover { border-color:var(--green); color:var(--green); }
+.music-track-name {
+  flex:1; background:var(--input-bg); border:2px solid var(--input-border);
+  padding:8px 10px; color:var(--green);
+  font-family:var(--font); font-size:10px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.music-controls { display:flex; gap:7px; align-items:center; }
+.music-vol-row { display:flex; align-items:center; gap:8px; }
+.music-vol-lbl { color:var(--text-muted); font-size:9px; white-space:nowrap; }
+
+/* accordion */
+.acc-btn {
+  background:var(--input-bg); border:2px solid var(--input-border);
+  color:var(--text); font-family:var(--font); font-size:10px;
+  padding:9px 12px; cursor:pointer;
+  display:flex; justify-content:space-between; align-items:center;
+  width:100%; text-align:left; transition:border-color 0.14s;
+}
+.acc-btn:hover { border-color:var(--green); }
+.acc-body {
+  display:none; background:var(--input-bg);
+  border:2px solid var(--input-border); border-top:none;
+  padding:13px 15px; color:var(--text-muted);
+  font-size:9px; line-height:2.2; max-height:240px; overflow-y:auto;
+}
+.acc-body.open { display:block; }
+.acc-body h4 { color:var(--green); margin:10px 0 5px; font-size:9px; }
+.acc-body p  { margin-bottom:10px; }
+
+/* =====================
+   LAUNCH OVERLAY
+   ===================== */
+#launch-overlay {
+  position:fixed; inset:0; z-index:500;
+  display:none; align-items:center; justify-content:center;
+  flex-direction:column; gap:20px;
+}
+#launch-overlay.active {
+  display:flex; background:rgba(0,0,0,0.72);
+  backdrop-filter:blur(16px);
+  animation:ovIn 0.35s ease;
+}
+@keyframes ovIn {
+  from{opacity:0;backdrop-filter:blur(0)}
+  to{opacity:1;backdrop-filter:blur(16px)}
+}
+#launch-txt {
+  color:#fff; font-size:18px; text-align:center; line-height:2;
+  text-shadow:0 0 30px var(--green); animation:lPulse 1s ease-in-out infinite;
+}
+@keyframes lPulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+.l-dots { display:flex; gap:9px; }
+.l-dots span {
+  width:9px; height:9px; background:var(--green);
+  animation:lBounce 0.9s ease-in-out infinite;
+}
+.l-dots span:nth-child(2){animation-delay:0.15s}
+.l-dots span:nth-child(3){animation-delay:0.3s}
+@keyframes lBounce { 0%,80%,100%{transform:scale(0.55);opacity:0.4} 40%{transform:scale(1.1);opacity:1} }
+
+/* =====================
+   HAM FLOAT (sidebar closed)
+   ===================== */
+#ham-float {
+  position:absolute; z-index:20;
+  left:10px; top:11px;
+  background:var(--topbar); border:1px solid var(--topbar-border);
+  padding:7px; cursor:pointer;
+  display:none; flex-direction:column; gap:4px;
+}
+#ham-float.show { display:flex; }
+#ham-float span { display:block; width:17px; height:2px; background:var(--topbar-text); }
+
+/* =====================
+   FPS COUNTER
+   ===================== */
+#fps-ctr {
+  display:none; position:fixed;
+  top:52px; right:10px; z-index:900;
+  color:#0f0; font-family:var(--font); font-size:9px;
+  background:rgba(0,0,0,0.7); padding:3px 7px;
+  pointer-events:none;
+}
+
+/* =====================
+   SCROLLBAR
+   ===================== */
+::-webkit-scrollbar { width:5px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--scrollbar); }
+::-webkit-scrollbar-thumb:hover { background:var(--green); }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading-screen">
+  <div id="load-bg"></div>
+  <div class="load-content">
+    <img id="load-logo" src="./images/eaglercraft-game.png" alt="">
+    <div class="load-bar-wrap">
+      <div class="load-bar-outer">
+        <div class="load-bar-fill" id="bar-fill"></div>
+        <div class="load-bar-pct" id="bar-pct">0%</div>
+      </div>
+      <div class="load-bar-status" id="bar-status">Initializing...</div>
+    </div>
+  </div>
+</div>
+
+<!-- LAUNCHER -->
+<div id="launcher">
+  <div id="bg"></div>
+  <div id="bg-dim"></div>
+  <button id="ham-float" onclick="toggleSb()"><span></span><span></span><span></span></button>
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="sb-section">EDITIONS</div>
+    <div class="nav-item active" id="nav-web"      onclick="switchEd('web')">
+      <img src="./images/i-web.png" alt=""> WEB EDITION
+    </div>
+    <div class="nav-item"        id="nav-modded"   onclick="switchEd('modded')">
+      <img src="./images/i-modded.png" alt=""> MODDED EDITION
+    </div>
+    <div class="nav-item"        id="nav-controls" onclick="switchEd('controls')">
+      <img src="./images/i-controls.png" alt=""> CONTROLS EDITION
+    </div>
+
+    <div class="sb-divider"></div>
+    <div class="sb-section">LINKS</div>
+    <div class="nav-item" onclick="clickPlay();window.open('https://topeaglerservers.com/','_blank')">
+      <img src="./images/servers.png" alt=""> SERVERS
+    </div>
+    <div class="nav-item" onclick="clickPlay();window.open('https://discord.gg/JqC4UvHxW','_blank')">
+      <img src="./images/m-discord.png" alt=""> DISCORD
+    </div>
+
+    <div class="sb-divider"></div>
+    <div class="sb-section">LAUNCHER</div>
+    <div class="nav-item" id="nav-credits"  onclick="switchEd('credits')">
+      <img src="./images/m-credits.png" alt=""> CREDITS
+    </div>
+    <div class="nav-item" id="nav-settings" onclick="switchEd('settings')">
+      <img src="./images/m-settings.png" alt=""> SETTINGS
+    </div>
+
+    <div class="sb-spacer"></div>
+    <div class="sb-version">EaglercraftZ Launcher v1.0</div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main-area">
+
+    <!-- TOPBAR -->
+    <div id="topbar">
+      <button id="menu-toggle" onclick="toggleSb()">
+        <span></span><span></span><span></span>
+      </button>
+      <div id="topbar-name">EAGLERCRAFT Z LAUNCHER</div>
+
+      <!-- music pill -->
+      <div id="music-pill">
+        <span class="note">♪</span>
+        <span id="music-title-scroll">Loading...</span>
+      </div>
+
+      <a class="tb-btn icon-only" href="https://eaglercraftz.pages.dev/javascript/" target="_blank" title="EaglercraftZ" onclick="clickPlay()">
+        <img src="./images/EaglercraftZ.png" alt="EaglercraftZ">
+      </a>
+      <a class="tb-btn" href="https://eaglercraft.q13x.com/" target="_blank" onclick="clickPlay()">q13x</a>
+    </div>
+
+    <!-- GAME SCREEN -->
+    <div id="game-screen">
+      <img id="logo-img" src="./images/web-title.png" alt="Logo">
+      <div id="version-block">
+        <div class="ver-lbl">SELECT VERSION</div>
+        <div class="dd-wrap">
+          <button class="dd-btn" id="dd-btn" onclick="toggleDd()">
+            <img id="dd-img" src="./images/1.12.png" alt="">
+            <span id="dd-lbl">Eaglercraft 1.12.2</span>
+            <span class="chv">▼</span>
+          </button>
+          <div class="dd-list" id="dd-list"></div>
+        </div>
+      </div>
+      <img id="play-btn" src="./images/KKrzRaq-800.jpg" alt="PLAY" onclick="launchGame()">
+      <div id="game-footer">eaglercraft • open source minecraft in your browser</div>
+    </div>
+
+    <!-- CREDITS SCREEN -->
+    <div class="sec-screen" id="credits-screen">
+      <div class="sec-title">✦ CREDITS</div>
+      <div class="credit-grid">
+        <div class="credit-card">
+          <div class="credit-name">30gato_Yoshi</div>
+          <div class="credit-quote">"im a pop cat"</div>
+          <div class="credit-desc">Made this shortcut launcher!</div>
+        </div>
+        <div class="credit-card">
+          <div class="credit-name">lax1dude</div>
+          <div class="credit-quote">"bro is the goat"</div>
+          <div class="credit-desc">Made Eaglercraft come to life!</div>
+        </div>
+        <div class="credit-card">
+          <div class="credit-name">Ayunami2000</div>
+          <div class="credit-quote">"specialist in helping"</div>
+          <div class="credit-desc">Made much help to lax1dude!</div>
+        </div>
+        <div class="credit-card">
+          <div class="credit-name">irv77</div>
+          <div class="credit-quote">"ma gawd he made a launcher"</div>
+          <div class="credit-desc">Made Ampler Launcher, a huge inspiration!</div>
+        </div>
+        <div class="credit-card">
+          <div class="credit-name">PeytonPlayz595</div>
+          <div class="credit-quote">"the port legend"</div>
+          <div class="credit-desc">Ported multiple MC versions to Eaglercraft.</div>
+        </div>
+        <div class="credit-card">
+          <div class="credit-name">EymenWSMC</div>
+          <div class="credit-quote">"community builder"</div>
+          <div class="credit-desc">Major contributor to the Eaglercraft community.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS SCREEN -->
+    <div class="sec-screen" id="settings-screen">
+      <div class="sec-title">⚙ SETTINGS</div>
+
+      <!-- CATEGORY TABS -->
+      <div class="cat-tabs">
+        <button class="cat-tab active" onclick="showCat('general')">GENERAL</button>
+        <button class="cat-tab"       onclick="showCat('display')">DISPLAY</button>
+        <button class="cat-tab"       onclick="showCat('music')">MUSIC</button>
+        <button class="cat-tab"       onclick="showCat('about')">ABOUT</button>
+      </div>
+
+      <!-- GENERAL -->
+      <div class="cat-panel visible" id="cat-general">
+        <div class="settings-body">
+
+          <div class="s-card">
+            <div class="s-lbl">✏ LAUNCHER NAME</div>
+            <div class="s-desc">Shown in the top bar.</div>
+            <input class="s-input" id="name-inp" type="text" value="EAGLERCRAFT Z LAUNCHER" oninput="setName(this.value)" maxlength="40">
+          </div>
+
+          <div class="s-card">
+            <div class="s-lbl">🪟 OPEN GAME IN NEW TAB</div>
+            <div class="s-desc">When ON, clicking PLAY opens in a new browser tab instead of navigating away.</div>
+            <div class="tog-grp">
+              <button class="tog on"  id="t-no"  onclick="setWin(false)">OFF</button>
+              <button class="tog"     id="t-yes" onclick="setWin(true)">ON</button>
+            </div>
+          </div>
+
+          <div class="s-card">
+            <div class="s-lbl">📌 SIDEBAR ON STARTUP</div>
+            <div class="s-desc">Whether the sidebar starts open or closed.</div>
+            <div class="tog-grp">
+              <button class="tog on" id="t-sbo" onclick="setSbDef('open')">OPEN</button>
+              <button class="tog"    id="t-sbc" onclick="setSbDef('closed')">CLOSED</button>
+            </div>
+          </div>
+
+          <div class="s-card">
+            <div class="s-lbl">🖱 CLICK SOUNDS</div>
+            <div class="s-desc">Plays the Minecraft click sound on button presses.</div>
+            <div class="tog-grp">
+              <button class="tog on" id="t-sfx-on"  onclick="setSfx(true)">ON</button>
+              <button class="tog"    id="t-sfx-off" onclick="setSfx(false)">OFF</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- DISPLAY -->
+      <div class="cat-panel" id="cat-display">
+        <div class="settings-body">
+
+          <div class="s-card">
+            <div class="s-lbl">🎨 THEME</div>
+            <div class="s-desc">Change the launcher color theme.</div>
+            <div class="tog-grp">
+              <button class="tog on" id="t-dark"  onclick="setTheme('dark')">DARK</button>
+              <button class="tog"    id="t-light" onclick="setTheme('light')">LIGHT</button>
+            </div>
+          </div>
+
+          <div class="s-card">
+            <div class="s-lbl">🔍 ZOOM LEVEL</div>
+            <div class="s-desc">Scales the launcher layout. Works like Ctrl+scroll.</div>
+            <div class="range-row">
+              <input type="range" class="s-range" id="zoom-sl" min="50" max="150" value="100" oninput="setZoom(this.value)">
+              <div class="range-v" id="zoom-v">100%</div>
+            </div>
+            <div class="tog-grp">
+              <button class="tog" onclick="setZoom(75);zoom_sl.value=75">75%</button>
+              <button class="tog" onclick="setZoom(100);zoom_sl.value=100">100%</button>
+              <button class="tog" onclick="setZoom(125);zoom_sl.value=125">125%</button>
+            </div>
+          </div>
+
+          <div class="s-card">
+            <div class="s-lbl">💨 BACKGROUND OPACITY</div>
+            <div class="s-desc">How dark the overlay on top of the background image is. Lower = more visible background.</div>
+            <div class="range-row">
+              <input type="range" class="s-range" id="dim-sl" min="0" max="80" value="45" oninput="setBgDim(this.value)">
+              <div class="range-v" id="dim-v">45%</div>
+            </div>
+          </div>
+
+          <div class="s-card">
+            <div class="s-lbl">📊 FPS COUNTER</div>
+            <div class="s-desc">Shows a live FPS overlay in the top-right corner.</div>
+            <div class="tog-grp">
+              <button class="tog"    id="t-fps-off" onclick="setFps(false)">OFF</button>
+              <button class="tog on" id="t-fps-on"  onclick="setFps(true)">ON</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- MUSIC -->
+      <div class="cat-panel" id="cat-music">
+        <div class="settings-body">
+
+          <div class="s-card">
+            <div class="s-lbl">🎵 BACKGROUND MUSIC</div>
+            <div class="s-desc">Controls the Minecraft music that plays in the launcher.</div>
+            <div class="music-player">
+              <div class="music-track-row">
+                <button class="music-prev" onclick="musicPrev()">◀</button>
+                <div class="music-track-name" id="music-track-name">Loading...</div>
+                <button class="music-next" onclick="musicNext()">▶</button>
+              </div>
+              <div class="music-controls">
+                <button class="tog on" id="t-mus-on"  onclick="setMusicOn(true)">PLAY</button>
+                <button class="tog"    id="t-mus-off" onclick="setMusicOn(false)">PAUSE</button>
+              </div>
+              <div class="music-vol-row">
+                <div class="music-vol-lbl">VOLUME</div>
+                <input type="range" class="s-range" id="vol-sl" min="0" max="100" value="60" style="flex:1" oninput="setVol(this.value)">
+                <div class="range-v" id="vol-v">60%</div>
+              </div>
+              <div class="tog-grp">
+                <button class="tog on" id="t-shuf-off" onclick="setShuffle(false)">IN ORDER</button>
+                <button class="tog"    id="t-shuf-on"  onclick="setShuffle(true)">SHUFFLE</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ABOUT -->
+      <div class="cat-panel" id="cat-about">
+        <div class="settings-body">
+
+          <div class="s-card">
+            <div class="s-lbl">📖 ABOUT EAGLERCRAFT</div>
+            <button class="acc-btn" onclick="toggleAcc('acc1')">
+              <span>What is Eaglercraft?</span><span id="arr-acc1">▼</span>
+            </button>
+            <div class="acc-body" id="acc1">
+              <h4>What is Eaglercraft?</h4>
+              <p>Eaglercraft is an open source Minecraft that you can play in any regular web browser. That includes school chromebooks. You can join real Minecraft 1.5.2 servers with it through a custom proxy plugin developed for Bungeecord and Velocity.</p>
+              <h4>How does it work?</h4>
+              <p>Eaglercraft uses the launcher assets of the official version of Minecraft direct from Mojang to compile it to Javascript using TeaVM. A custom compatibility layer by LAX1DUDE allows the OpenGL 1.3 rendering engine to operate through an HTML5 WebGL canvas.</p>
+              <h4>Is this legal?</h4>
+              <p>Yes. All assets protected by DMCA are not hosted by Eaglercraft — they are acquired directly from Mojang's public servers, exactly like the original Minecraft Launcher does.</p>
+              <h4>Who made it?</h4>
+              <p>LAX1DUDE created Eaglercraft in late 2021 (first stable build February 2022). Ayunami2000 contributed heavily. PeytonPlayz595, EymenWSMC, and radmanplays ported other Minecraft versions.</p>
+            </div>
+          </div>
+
+          <div class="s-card">
+            <div class="s-lbl">🚀 LAUNCHER INFO</div>
+            <button class="acc-btn" onclick="toggleAcc('acc2')">
+              <span>About this launcher</span><span id="arr-acc2">▼</span>
+            </button>
+            <div class="acc-body" id="acc2">
+              <h4>EaglercraftZ Launcher</h4>
+              <p>A custom single-file HTML launcher for Eaglercraft, made by 30gato_Yoshi. Inspired by Ampler Launcher by irv77.</p>
+              <h4>Features</h4>
+              <p>Web, Modded and Controls editions • 12 web versions • 7 modded clients • Minecraft music player • Light/Dark theme • Zoom control • Click sounds • FPS counter</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main-area -->
+</div><!-- /launcher -->
+
+<!-- LAUNCH OVERLAY -->
+<div id="launch-overlay">
+  <div id="launch-txt">Launching Eaglercraft,<br>be ready!</div>
+  <div class="l-dots"><span></span><span></span><span></span></div>
+</div>
+
+<!-- FPS -->
+<div id="fps-ctr">60 FPS</div>
+
+<!-- AUDIO -->
+<audio id="audio-player" preload="auto"></audio>
+<audio id="sfx-click" src="./SFX/minecraft_click.mp3" preload="auto"></audio>
+
+<script>
+/* ==========================================
+   EDITIONS DATA
+   ========================================== */
+const EDITIONS = {
+  web: {
+    bg:   './images/web edit.png',
+    logo: './images/web-title.png',
+    launchTxt: 'Launching Eaglercraft,<br>be ready!',
+    vers: [
+      { lbl:'Eaglercraft 1.12.2',    img:'./images/1.12.png',         url:'https://eaglercraft.com/play/?version=1.12.2' },
+      { lbl:'Eaglercraft 1.12 WASM', img:'./images/1.12 wasm.png',    url:'https://eaglercraft.com/play/?version=1.12.2-wasm' },
+      { lbl:'Eaglercraft 1.8.8',     img:'./images/1.8.png',          url:'https://eaglercraft.com/play/?version=1.8.8' },
+      { lbl:'Eaglercraft 1.8 WASM',  img:'./images/1.8 wasm.png',     url:'https://eaglercraft.com/play/?version=1.8.8-wasm' },
+      { lbl:'Eaglercraft b1.7.3',    img:'./images/1.7.3.png',        url:'https://eaglercraft.com/play/?version=b1.7.3' },
+      { lbl:'Eaglercraft 1.5.2',     img:'./images/1.5.2.png',        url:'https://eaglercraft.com/play/?version=1.5.2' },
+      { lbl:'Eaglercraft b1.3',      img:'./images/1.3.png',          url:'https://eaglercraft.com/play/?version=b1.3' },
+      { lbl:'Eaglercraft a1.2.6',    img:'./images/1.2.6.png',        url:'https://eaglercraft.com/play/?version=a1.2.6' },
+      { lbl:'Indev Version',         img:'./images/Indev.png',         url:'https://eaglercraft.com/play/?version=indev' },
+      { lbl:'Scratch Version',       img:'./images/Scratch.png',       url:'https://eaglercraft.com/play/?version=scratch' },
+      { lbl:'Classic (c0.30)',       img:'./images/classic.png',       url:'https://irv77.github.io/AmplerLauncher/mc/c0.30/' },
+      { lbl:'Classic WASM',          img:'./images/classic wasm.png',  url:'https://irv77.github.io/AmplerLauncher/mc/c0.30-wasm/' },
+    ]
+  },
+  modded: {
+    bg:   './images/mod edit.jpg',
+    logo: './images/modded-title.png',
+    launchTxt: 'Launching a modded client,<br>be ready!',
+    vers: [
+      { lbl:'Astra Client',  img:'./images/astra-client.png',  url:'https://irv77.github.io/AmplerLauncher/mc/astraclient/' },
+      { lbl:'EaglerForge',   img:'./images/eaglerforge.png',   url:'https://irv77.github.io/AmplerLauncher/mc/eaglerforge/' },
+      { lbl:'PixelClient',   img:'./images/pixelclient.svg',   url:'https://irv77.github.io/AmplerLauncher/mc/pixelclient/' },
+      { lbl:'Resent Client', img:'./images/resent-client.png', url:'https://irv77.github.io/AmplerLauncher/mc/resentclient/' },
+      { lbl:'Shadow Client', img:'./images/shadow.png',        url:'https://irv77.github.io/AmplerLauncher/mc/shadowclient' },
+      { lbl:'Starlike',      img:'./images/starlike.png',      url:'https://irv77.github.io/AmplerLauncher/mc/starlikeclient/' },
+      { lbl:'Tuff Client',   img:'./images/tuff.png',          url:'https://irv77.github.io/AmplerLauncher/mc/tuffclient/' },
+    ]
+  },
+  controls: {
+    bg:   './images/console edit.webp',
+    logo: './images/controls-title.png',
+    launchTxt: 'Launching Eaglercraft,<br>be ready!',
+    vers: [
+      { lbl:'1.12 Mobile', img:'./images/1.12m.png', url:'https://eaglercraft.com/play/?version=1.12.2&userscript=flameddogo99-eaglermobile.js' },
+      { lbl:'1.8 Mobile',  img:'./images/1.8m.png',  url:'https://eaglercraft.com/play/?version=1.8.8&userscript=flameddogo99-eaglermobile.js' },
+      { lbl:'1.8 Console', img:'./images/1.8c.png',  url:'https://irv77.github.io/AmplerLauncher/mc/1.8.8/?userscript=irv77-eaglerconsole.js' },
+    ]
+  }
+};
+
+/* ==========================================
+   MUSIC DATA
+   ========================================== */
+const TRACKS = [
+  '1-01. Key', '1-03. Subwoofer Lullaby', '1-05. Living Mice',
+  '1-06. Moog City', '1-07. Haggstrom', '1-08. Minecraft',
+  '1-09. Oxygène', '1-11. Mice on Venus', '1-13. Wet Hands',
+  '1-14. Clark', '1-18. Sweden', '1-19. Cat',
+  '1-20. Dog', '1-21. Danny', '1-22. Beginning',
+  '2-06. Moog City 2'
+];
+
+/* ==========================================
+   STATE
+   ========================================== */
+let curEd      = 'web';
+let curVer     = 0;
+let newWin     = false;
+let sbOpen     = true;
+let sfxOn      = true;
+let musicOn    = true;
+let musicIdx   = 0;
+let shuffle    = false;
+let fpsOn      = false;
+let volume     = 0.6;
+let bgDim      = 0.45;
+let zoomLevel  = 1;
+
+const audio    = document.getElementById('audio-player');
+const sfxClick = document.getElementById('sfx-click');
+audio.volume   = volume;
+
+/* ==========================================
+   LOADING BAR
+   ========================================== */
+const LOAD_MSGS = [
+  'Initializing launcher...','Loading fonts...','Loading assets...',
+  'Preparing music player...','Fetching version list...','Almost ready...','Done!'
+];
+let prog = 0;
+function fakeLoad() {
+  prog = Math.min(prog + Math.random() * 8 + 2, 100);
+  document.getElementById('bar-fill').style.width  = prog + '%';
+  document.getElementById('bar-pct').textContent   = Math.floor(prog) + '%';
+  document.getElementById('bar-status').textContent = LOAD_MSGS[Math.min(Math.floor(prog / 15), LOAD_MSGS.length - 1)];
+  if (prog >= 100) {
+    document.getElementById('bar-fill').classList.add('shine');
+    setTimeout(() => {
+      const ls = document.getElementById('loading-screen');
+      ls.classList.add('fade-out');
+      setTimeout(() => {
+        ls.style.display = 'none';
+        const l = document.getElementById('launcher');
+        l.style.cssText = 'display:flex;opacity:0;transition:opacity 0.8s ease';
+        requestAnimationFrame(() => { l.style.opacity = '1'; });
+        switchEd('web');
+        startMusic();
+      }, 1100);
+    }, 750);
+  } else {
+    setTimeout(fakeLoad, 100 + Math.random() * 210);
+  }
+}
+setTimeout(fakeLoad, 500);
+
+/* ==========================================
+   ZOOM (CSS transform scale, not zoom prop)
+   ========================================== */
+function setZoom(v) {
+  zoomLevel = v / 100;
+  document.getElementById('zoom-v').textContent = v + '%';
+  // scale body from top-left, shift wrapper to fill viewport
+  document.body.style.transform = `scale(${zoomLevel})`;
+  document.body.style.transformOrigin = 'top left';
+  document.body.style.width  = (100 / zoomLevel) + 'vw';
+  document.body.style.height = (100 / zoomLevel) + 'vh';
+  // keep overflow hidden on html
+  document.documentElement.style.overflow = 'hidden';
+}
+// also support Ctrl + wheel
+window.addEventListener('wheel', e => {
+  if (!e.ctrlKey) return;
+  e.preventDefault();
+  const sl = document.getElementById('zoom-sl');
+  let v = parseInt(sl.value) + (e.deltaY < 0 ? 5 : -5);
+  v = Math.max(50, Math.min(150, v));
+  sl.value = v;
+  setZoom(v);
+}, { passive: false });
+
+/* ==========================================
+   EDITION SWITCH
+   ========================================== */
+function switchEd(ed) {
+  clickPlay();
+  ['nav-web','nav-modded','nav-controls','nav-credits','nav-settings']
+    .forEach(id => { const e = document.getElementById(id); if(e) e.classList.remove('active'); });
+
+  document.getElementById('game-screen').classList.remove('hidden');
+  document.getElementById('credits-screen').classList.remove('visible');
+  document.getElementById('settings-screen').classList.remove('visible');
+
+  const bg    = document.getElementById('bg');
+  const bgDimEl = document.getElementById('bg-dim');
+
+  if (ed === 'credits') {
+    document.getElementById('nav-credits').classList.add('active');
+    bg.style.backgroundImage = 'none';
+    bg.style.background      = 'transparent';
+    bgDimEl.style.display    = 'none';
+    document.getElementById('game-screen').classList.add('hidden');
+    document.getElementById('credits-screen').classList.add('visible');
+    return;
+  }
+  if (ed === 'settings') {
+    document.getElementById('nav-settings').classList.add('active');
+    bg.style.backgroundImage = 'none';
+    bg.style.background      = 'var(--settings-bg)';
+    bgDimEl.style.display    = 'none';
+    document.getElementById('game-screen').classList.add('hidden');
+    document.getElementById('settings-screen').classList.add('visible');
+    return;
+  }
+
+  const navEl = document.getElementById('nav-' + ed);
+  if (navEl) navEl.classList.add('active');
+  curEd  = ed; curVer = 0;
+  const data = EDITIONS[ed];
+
+  bg.style.background      = '';
+  bg.style.backgroundImage = `url('${data.bg}')`;
+  bgDimEl.style.display    = '';
+  setBgDim(Math.round(bgDim * 100));
+
+  document.getElementById('logo-img').src = data.logo;
+  buildDd(data.vers);
+  selectVer(0);
+}
+
+/* ==========================================
+   DROPDOWN
+   ========================================== */
+function buildDd(vers) {
+  const list = document.getElementById('dd-list');
+  list.innerHTML = '';
+  vers.forEach((v, i) => {
+    const d = document.createElement('div');
+    d.className = 'dd-opt' + (i === 0 ? ' selected' : '');
+    d.innerHTML = `<img src="${v.img}" alt=""> ${v.lbl}`;
+    d.onclick = () => { clickPlay(); selectVer(i); };
+    list.appendChild(d);
+  });
+}
+function selectVer(i) {
+  curVer = i;
+  const v = EDITIONS[curEd].vers[i];
+  document.getElementById('dd-img').src  = v.img;
+  document.getElementById('dd-lbl').textContent = v.lbl;
+  document.querySelectorAll('.dd-opt').forEach((el, idx) => el.classList.toggle('selected', idx === i));
+  closeDd();
+}
+function toggleDd() { clickPlay(); document.getElementById('dd-btn').classList.toggle('open'); document.getElementById('dd-list').classList.toggle('open'); }
+function closeDd()  { document.getElementById('dd-btn').classList.remove('open'); document.getElementById('dd-list').classList.remove('open'); }
+document.addEventListener('click', e => { if (!e.target.closest('.dd-wrap')) closeDd(); });
+
+/* ==========================================
+   LAUNCH
+   ========================================== */
+function launchGame() {
+  clickPlay();
+  const url = EDITIONS[curEd].vers[curVer].url;
+  const txt = EDITIONS[curEd].launchTxt;
+  document.getElementById('launch-txt').innerHTML = txt;
+  document.getElementById('launch-overlay').classList.add('active');
+  setTimeout(() => {
+    document.getElementById('launch-overlay').classList.remove('active');
+    if (newWin) window.open(url,'_blank');
+    else window.location.href = url;
+  }, 2400);
+}
+
+/* ==========================================
+   SIDEBAR
+   ========================================== */
+function toggleSb() {
+  clickPlay();
+  sbOpen = !sbOpen;
+  document.getElementById('sidebar').classList.toggle('collapsed', !sbOpen);
+  document.getElementById('ham-float').classList.toggle('show', !sbOpen);
+}
+
+/* ==========================================
+   SETTINGS CATEGORIES
+   ========================================== */
+function showCat(id) {
+  clickPlay();
+  document.querySelectorAll('.cat-panel').forEach(p => p.classList.remove('visible'));
+  document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('cat-' + id).classList.add('visible');
+  event.currentTarget.classList.add('active');
+}
+
+/* ==========================================
+   SETTINGS FUNCTIONS
+   ========================================== */
+function setTheme(t) {
+  clickPlay();
+  document.body.classList.toggle('light-mode', t === 'light');
+  document.getElementById('t-dark').classList.toggle('on', t === 'dark');
+  document.getElementById('t-light').classList.toggle('on', t === 'light');
+}
+function setName(v) {
+  document.getElementById('topbar-name').textContent = v || 'EAGLERCRAFT Z LAUNCHER';
+}
+function setWin(v) {
+  clickPlay(); newWin = v;
+  document.getElementById('t-no').classList.toggle('on', !v);
+  document.getElementById('t-yes').classList.toggle('on', v);
+}
+function setSbDef(v) {
+  clickPlay();
+  document.getElementById('t-sbo').classList.toggle('on', v === 'open');
+  document.getElementById('t-sbc').classList.toggle('on', v === 'closed');
+}
+function setSfx(v) {
+  clickPlay(); sfxOn = v;
+  document.getElementById('t-sfx-on').classList.toggle('on', v);
+  document.getElementById('t-sfx-off').classList.toggle('on', !v);
+}
+function setFps(v) {
+  clickPlay(); fpsOn = v;
+  document.getElementById('fps-ctr').style.display = v ? 'block' : 'none';
+  document.getElementById('t-fps-off').classList.toggle('on', !v);
+  document.getElementById('t-fps-on').classList.toggle('on', v);
+  if (v) startFps(); else stopFps();
+}
+function setBgDim(v) {
+  bgDim = v / 100;
+  document.getElementById('dim-v').textContent = v + '%';
+  document.getElementById('bg-dim').style.background = `rgba(0,0,0,${bgDim})`;
+}
+function toggleAcc(id) {
+  const b = document.getElementById(id);
+  b.classList.toggle('open');
+  document.getElementById('arr-' + id).textContent = b.classList.contains('open') ? '▲' : '▼';
+}
+
+/* ==========================================
+   CLICK SFX
+   ========================================== */
+function clickPlay() {
+  if (!sfxOn) return;
+  try {
+    sfxClick.currentTime = 0;
+    sfxClick.play().catch(()=>{});
+  } catch(e){}
+}
+
+// attach clickPlay to all buttons and nav items globally
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('button, .nav-item, .tb-btn, .tog, .cat-tab, .dd-opt').forEach(el => {
+    el.addEventListener('mousedown', clickPlay);
+  });
+});
+
+/* ==========================================
+   MUSIC PLAYER
+   ========================================== */
+function trackPath(idx) {
+  return './SFX/' + TRACKS[idx] + '.mp3';
+}
+function updateMusicUI() {
+  const name = TRACKS[musicIdx];
+  document.getElementById('music-track-name').textContent = name;
+  document.getElementById('music-title-scroll').textContent = name;
+}
+function startMusic() {
+  musicIdx = 0;
+  updateMusicUI();
+  playTrack();
+}
+function playTrack() {
+  if (!musicOn) return;
+  audio.src = trackPath(musicIdx);
+  audio.volume = volume;
+  audio.play().catch(() => {
+    // autoplay blocked — wait for user interaction
+    document.addEventListener('click', function once() {
+      audio.play().catch(()=>{});
+      document.removeEventListener('click', once);
+    });
+  });
+  updateMusicUI();
+}
+audio.addEventListener('ended', () => {
+  if (shuffle) {
+    musicIdx = Math.floor(Math.random() * TRACKS.length);
+  } else {
+    musicIdx = (musicIdx + 1) % TRACKS.length;
+  }
+  playTrack();
+});
+
+function musicNext() {
+  clickPlay();
+  if (shuffle) musicIdx = Math.floor(Math.random() * TRACKS.length);
+  else musicIdx = (musicIdx + 1) % TRACKS.length;
+  playTrack();
+}
+function musicPrev() {
+  clickPlay();
+  musicIdx = (musicIdx - 1 + TRACKS.length) % TRACKS.length;
+  playTrack();
+}
+function setMusicOn(v) {
+  clickPlay(); musicOn = v;
+  document.getElementById('t-mus-on').classList.toggle('on', v);
+  document.getElementById('t-mus-off').classList.toggle('on', !v);
+  if (v) { audio.play().catch(()=>{}); }
+  else   { audio.pause(); }
+}
+function setVol(v) {
+  volume = v / 100;
+  audio.volume = volume;
+  document.getElementById('vol-v').textContent = v + '%';
+}
+function setShuffle(v) {
+  clickPlay(); shuffle = v;
+  document.getElementById('t-shuf-off').classList.toggle('on', !v);
+  document.getElementById('t-shuf-on').classList.toggle('on', v);
+}
+
+/* ==========================================
+   FPS COUNTER
+   ========================================== */
+let fpsRunning = false, fpsLast = performance.now(), fpsFrames = 0;
+function startFps() { fpsRunning = true; countFps(); }
+function stopFps()  { fpsRunning = false; }
+function countFps() {
+  if (!fpsRunning) return;
+  fpsFrames++;
+  const now = performance.now();
+  if (now - fpsLast >= 1000) {
+    document.getElementById('fps-ctr').textContent = fpsFrames + ' FPS';
+    fpsFrames = 0; fpsLast = now;
+  }
+  requestAnimationFrame(countFps);
+}
+
+/* ==========================================
+   INIT BG DIM
+   ========================================== */
+document.getElementById('bg-dim').style.background = `rgba(0,0,0,${bgDim})`;
+</script>
+</body>
+</html>
